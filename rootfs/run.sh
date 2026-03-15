@@ -14,14 +14,19 @@ else
     echo "检查加载项addon_configs目录..."
     ls -la /config/ws-scrcpy/ || echo "无法列出/config/ws-scrcpy/目录"
     if [ -d /config/ws-scrcpy ]; then
-        echo "在加载项配置目录/config/ws-scrcpy/中发现源文件, 复制替换进容器/app目录"
-        cp -r /config/ws-scrcpy/* /app/
-        echo "复制完成"
+        # Check if directory is not empty
+        if [ "$(ls -A /config/ws-scrcpy/)" ]; then
+            echo "在加载项配置目录/config/ws-scrcpy/中发现源文件, 复制替换进容器/app目录"
+            cp -r /config/ws-scrcpy/* /app/
+            echo "复制完成"
+            
+            # Rebuild the project to apply the changes
+            echo "重新构建项目以应用修改..."
+            cd /app && npm run dist
+        else
+            echo "加载项配置目录/config/ws-scrcpy/为空，跳过文件复制和重建"
+        fi
         
-        # Rebuild the project to apply the changes
-        echo "重新构建项目以应用修改..."
-        cd /app && npm run dist
-
         # Create BuildCompeted file to indicate successful build
         echo "创建BuildCompeted文件以标记构建完成"
         touch "$BUILD_COMPLETED_FILE"
@@ -29,9 +34,6 @@ else
         echo "未在加载项配置目录/config/ws-scrcpy/中发现源文件, 使用默认文件运行"
         # Skip rebuild when no custom files
         echo "没有自定义文件，跳过重建步骤"
-        
-        # Create BuildCompeted file in a safe location
-        mkdir -p /config/ws-scrcpy
     fi
 fi
 
