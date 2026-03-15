@@ -4,203 +4,36 @@ ingress_entry=$(bashio::addon.ingress_entry)
 
 set -ex
 
-# Check if custom files exist and copy them
-echo "检查加载项addon_configs目录..."
-ls -la /config/ || echo "无法列出/config目录"
-if [ -d /config/ws-scrcpy ]; then
-    echo "在加载项配置目录/config/ws-scrcpy/中发现源文件, 复制替换进容器/app目录"
-    cp -r /config/ws-scrcpy/* /app/
-    echo "复制完成"
+# Check if BuildCompeted file exists
+BUILD_COMPLETED_FILE="/config/ws-scrcpy/BuildCompeted"
+
+if [ -f "$BUILD_COMPLETED_FILE" ]; then
+    echo "发现BuildCompeted文件，跳过文件替换和重建步骤"
 else
-    echo "未在加载项配置目录/config/ws-scrcpy/中发现源文件, 使用默认文件运行"
+    # Check if custom files exist and copy them
+    echo "检查加载项addon_configs目录..."
+    ls -la /config/ws-scrcpy/ || echo "无法列出/config/ws-scrcpy/目录"
+    if [ -d /config/ws-scrcpy ]; then
+        echo "在加载项配置目录/config/ws-scrcpy/中发现源文件, 复制替换进容器/app目录"
+        cp -r /config/ws-scrcpy/* /app/
+        echo "复制完成"
+        
+        # Rebuild the project to apply the changes
+        echo "重新构建项目以应用修改..."
+        cd /app && npm run dist
+
+        # Create BuildCompeted file to indicate successful build
+        echo "创建BuildCompeted文件以标记构建完成"
+        touch "$BUILD_COMPLETED_FILE"
+    else
+        echo "未在加载项配置目录/config/ws-scrcpy/中发现源文件, 使用默认文件运行"
+        # Skip rebuild when no custom files
+        echo "没有自定义文件，跳过重建步骤"
+        
+        # Create BuildCompeted file in a safe location
+        mkdir -p /config/ws-scrcpy
+    fi
 fi
-
-# Force update the CSS file to ensure our changes are applied
-echo "更新CSS文件以确保修改生效..."
-cat > /app/src/style/app.css << 'EOF'
-:root {
-    --main-bg-color: hsl(0, 0%, 100%);
-    --stream-bg-color: hsl(0, 0%, 85%);
-    --shell-bg-color: hsl(0, 0%, 0%);
-    --text-shadow-color: hsl(218, 67%, 95%);
-    --header-bg-color: hsl(0, 0%, 95%);
-    --controls-bg-color: hsla(0, 0%, 95%, 0.8);
-    --control-buttons-bg-color: hsl(0, 0%, 95%);
-    --text-color: hsl(210, 16%, 22%);
-    --text-color-light: hsl(200, 16%, 52%);
-    --link-color: hsl(218, 85%, 43%);
-    --link-color-light: hsl(218, 85%, 73%);
-    --link-color_visited: hsl(271, 68%, 32%);
-    --link-color_visited-light: hsl(271, 68%, 72%);
-    --svg-checkbox-bg-color: hsl(172, 100%, 37%);
-    --svg-button-fill: hsl(199, 17%, 46%);
-    --kill-button-hover-color: hsl(342, 100%, 37%);
-    --url-color: hsl(0, 0%, 60%);
-    --button-text-color: hsl(214, 82%, 51%);
-    --button-border-color: hsl(0, 0%, 70%);
-    --progress-background-color: hsla(225, 100%, 50%, 0.2);
-    --progress-background-error-color: hsla(0, 100%, 50%, 0.2);
-    --font-size: 14px;
-}
-
-@media (prefers-color-scheme: dark) {
-    :root {
-        --main-bg-color: hsl(0, 0%, 14%);
-        --stream-bg-color: hsl(0, 0%, 20%);
-        --shell-bg-color: hsl(0, 0%, 0%);
-        --text-shadow-color: hsl(218, 17%, 18%);
-        --header-bg-color: hsl(0, 0%, 20%);
-        --controls-bg-color: hsla(201, 18%, 19%, 0.8);
-        --control-buttons-bg-color: hsl(201, 18%, 19%);
-        --text-color: hsl(0, 0%, 90%);
-        --text-color-light: hsl(0, 0%, 60%);
-        --link-color: hsl(218, 63%, 70%);
-        --link-color-light: hsl(218, 63%, 50%);
-        --link-color_visited: hsl(267, 31%, 47%);
-        --link-color_visited-light: hsl(267, 31%, 27%);
-        --svg-checkbox-bg-color: hsl(172, 100%, 27%);
-        --svg-button-fill: hsl(0, 0%, 100%);
-        --kill-button-hover-color: hsl(342, 100%, 27%);
-        --url-color: hsl(0, 0%, 60%);
-        --device-list-stripe-color: hsl(0, 0%, 16%);
-        --device-list-default-color: hsl(0, 0%, 14%);
-        --button-text-color: hsl(214, 82%, 76%);
-        --button-border-color: hsl(213, 5%, 39%);
-        --progress-background-color: hsla(225, 100%, 50%, 0.2);
-        --progress-background-error-color: hsla(0, 100%, 50%, 0.2);
-    }
-}
-
-html {
-    font-size: var(--font-size);
-}
-
-a {
-    color: var(--link-color);
-}
-
-a:visited {
-    color: var(--link-color_visited);
-}
-
-body {
-    color: var(--text-color);
-    background-color: var(--main-bg-color);
-    position: absolute;
-    margin: 0;
-    height: 100%;
-    width: 100%;
-    overflow: hidden;
-}
-
-
-body.shell {
-    background-color: var(--shell-bg-color);
-}
-
-body.stream {
-    background-color: var(--stream-bg-color);
-}
-
-.terminal-container {
-    width: 100%;
-    height: 100%;
-    padding: 5px;
-}
-
-:focus {
-    outline: none;
-}
-
-.flex-center {
-    display: flex;
-    align-items: center;
-}
-
-.wait {
-    cursor: wait;
-}
-
-.device-view {
-    z-index: 1;
-    float: left;
-    display: inline-block;
-}
-
-.video-layer {
-    position: absolute;
-    z-index: 0;
-}
-
-.touch-layer {
-    position: absolute;
-    z-index: 1;
-}
-
-.video {
-    float: left;
-    max-height: 100%;
-    max-width: calc(100% - 3.715rem);
-    background-color: #000000;
-}
-
-
-.control-buttons-list {
-    float: left;
-    width: 3.715rem;
-    background-color: var(--control-buttons-bg-color);
-}
-
-.control-button {
-    margin: .357rem .786rem;
-    padding: 0;
-    width: 2.143rem;
-    height: 2.143rem;
-    border: none;
-    opacity: 0.75;
-    background-color: var(--control-buttons-bg-color);
-}
-
-.control-button:hover {
-    opacity: 1;
-}
-
-.control-wrapper > input[type=checkbox] {
-    display: none;
-}
-
-.control-wrapper > label {
-    display: inline-block;
-}
-
-.control-button > svg {
-    fill: var(--svg-button-fill);
-}
-
-.control-wrapper > input[type=checkbox].two-images:checked + label > svg.image-on {
-    display: block;
-}
-
-.control-wrapper > input[type=checkbox].two-images:not(:checked) + label > svg.image-on {
-    display: none;
-}
-
-.control-wrapper > input[type=checkbox].two-images:checked + label > svg.image-off {
-    display: none;
-}
-
-.control-wrapper > input[type=checkbox].two-images:not(:checked) + label > svg.image-off {
-    display: block;
-}
-
-.control-wrapper > input[type=checkbox]:checked + label > svg {
-    fill: var(--svg-checkbox-bg-color);
-}
-EOF
-
-# Rebuild the project to apply the changes
-echo "重新构建项目以应用修改..."
-cd /app && npm run dist
 
 sed -i "s#%%ingress_entry%%#${ingress_entry}#g" /etc/nginx/http.d/*.conf
 nginx -g "error_log /dev/stdout info;"
