@@ -8,6 +8,8 @@ set -ex
 if [ -d /config/ws-scrcpy ]; then
     echo "在配置文件/config/ws-scrcpy中发现源文件, 复制替换进容器/app目录"
     cp -r /config/ws-scrcpy/* /app/
+else
+    echo "未在配置文件/config/ws-scrcpy中发现源文件, 使用默认文件"
 fi
 
 sed -i "s#%%ingress_entry%%#${ingress_entry}#g" /etc/nginx/http.d/*.conf
